@@ -67,8 +67,11 @@ def health():
     return status
 
 # Prediction Endpoint: This is the core ML serving endpoint.
-@app.post("/predict")
-def predict_batch(data: List[dict]):
+@app.api_route("/predict", methods=["GET", "POST"])
+def predict_batch(data: List[dict] | None = None):
+    if data is None:
+        return {"message": "Send a POST request with a JSON array of records to get predictions."}
+
     if not MODEL_PATH.exists():
         return {"error": f"Model not found at {str(MODEL_PATH)}"}
 
