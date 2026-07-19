@@ -14,7 +14,7 @@ jobs:
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID}}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ secrets.AWS_REGION }}
 
@@ -25,7 +25,7 @@ jobs:
       - name: Build, Tag, and Push housing-api
         run: |
           IMAGE_TAG=${GITHUB_SHA}
-          ECR_REGISTRY=261899902410.dkr.ecr.eu-west-2.amazonaws.com
+          ECR_REGISTRY=777830883498.dkr.ecr.ap-south-2.amazonaws.com
           ECR_REPOSITORY=housing-api
 
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile .
@@ -38,7 +38,7 @@ jobs:
       - name: Build, Tag, and Push housing-streamlit
         run: |
           IMAGE_TAG=${GITHUB_SHA}
-          ECR_REGISTRY=261899902410.dkr.ecr.eu-west-2.amazonaws.com
+          ECR_REGISTRY=777830883498.dkr.ecr.ap-south-2.amazonaws.com
           ECR_REPOSITORY=housing-streamlit
 
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG -f Dockerfile.streamlit .
