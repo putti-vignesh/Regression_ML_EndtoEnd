@@ -55,10 +55,14 @@ jobs:
             --service housing-api-service \
             --force-new-deployment
 
-      # Deploy to ECS - Streamlit
+      # Deploy to ECS - Streamlit (skip if service does not exist)
       - name: Deploy housing-streamlit-service
         run: |
-          aws ecs update-service \
-            --cluster housing-api-cluster-ecs \
-            --service housing-streamlit-service \
-            --force-new-deployment
+          if aws ecs describe-services --cluster housing-api-cluster-ecs --services housing-streamlit-service --query "services[?status!='INACTIVE'].serviceName" --output text | grep -q "housing-streamlit-service"; then
+            aws ecs update-service \
+              --cluster housing-api-cluster-ecs \
+              --service housing-streamlit-service \
+              --force-new-deployment
+          else
+            echo "Skipping housing-streamlit-service deployment because the service was not found."
+          fi
