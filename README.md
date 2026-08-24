@@ -1,3 +1,8 @@
+<p align="center">
+  <img src="ChatGPT%20Image%20Aug%2024%2C%202026%2C%2009_39_15%20PM.png"
+       alt="Housing ML End-to-End"
+       width="100%">
+</p>
 # 🏠 Housing ML End-to-End
 
 <p align="center">
