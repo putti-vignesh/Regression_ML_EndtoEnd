@@ -12,11 +12,6 @@ import streamlit as st
 # CONFIGURATION
 # ============================================================
 
-API_URL = os.environ.get(
-    "API_URL",
-    "http://127.0.0.1:8000/predict"
-)
-
 S3_BUCKET = os.environ.get(
     "S3_BUCKET",
     "housing-regression-data9"
@@ -46,11 +41,13 @@ AWS_REGION = st.secrets.get(
 # ============================================================
 
 if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
+
     st.error(
         "AWS credentials are missing from Streamlit Secrets. "
         "Go to App Settings → Secrets and configure "
         "AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY."
     )
+
     st.stop()
 
 
@@ -58,7 +55,10 @@ if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
 # PROJECT PATHS
 # ============================================================
 
-PROJECT_ROOT = Path(__file__).resolve().parent
+PROJECT_ROOT = Path(
+    __file__
+).resolve().parent
+
 
 MODEL_PATH = (
     PROJECT_ROOT
@@ -66,11 +66,13 @@ MODEL_PATH = (
     / "xgb_best_model.pkl"
 )
 
+
 FREQ_ENCODER_PATH = (
     PROJECT_ROOT
     / "models"
     / "freq_encoder.pkl"
 )
+
 
 TARGET_ENCODER_PATH = (
     PROJECT_ROOT
@@ -136,8 +138,9 @@ def load_from_s3(
         local_path
     )
 
-    # Use existing local file if available
+    # Use local file if it already exists
     if local_path.exists():
+
         return str(local_path)
 
     local_path.parent.mkdir(
@@ -155,10 +158,6 @@ def load_from_s3(
             S3_BUCKET,
             key,
             str(local_path)
-        )
-
-        st.success(
-            f"Downloaded {key} successfully."
         )
 
     except Exception as exc:
@@ -181,29 +180,50 @@ def load_data():
 
     try:
 
+        # ----------------------------------------------------
+        # Feature-engineered holdout data
+        # ----------------------------------------------------
+
         engineered_path = load_from_s3(
             "processed/feature_engineered_holdout.csv",
             "data/processed/feature_engineered_holdout.csv",
         )
+
+
+        # ----------------------------------------------------
+        # Metadata / cleaning data
+        # ----------------------------------------------------
 
         meta_path = load_from_s3(
             "processed/cleaning_holdout.csv",
             "data/processed/cleaning_holdout.csv",
         )
 
+
+        # ----------------------------------------------------
+        # Read data
+        # ----------------------------------------------------
+
         fe = pd.read_csv(
             engineered_path
         )
 
+
         meta = pd.read_csv(
             meta_path,
             parse_dates=["date"]
-        )[[
-            "date",
-            "city_full"
-        ]]
+        )[
+            [
+                "date",
+                "city_full"
+            ]
+        ]
 
-        # Align datasets if their lengths differ
+
+        # ----------------------------------------------------
+        # Align datasets
+        # ----------------------------------------------------
+
         if len(fe) != len(meta):
 
             min_len = min(
@@ -219,12 +239,18 @@ def load_data():
                 :min_len
             ].copy()
 
-        # Display dataframe
+
+        # ----------------------------------------------------
+        # Create display dataframe
+        # ----------------------------------------------------
+
         disp = pd.DataFrame(
             index=fe.index
         )
 
-        disp["date"] = meta["date"]
+        disp["date"] = meta[
+            "date"
+        ]
 
         disp["region"] = meta[
             "city_full"
@@ -246,7 +272,9 @@ def load_data():
             "price"
         ]
 
+
         return fe, disp
+
 
     except Exception as exc:
 
@@ -261,7 +289,7 @@ def load_data():
 
 
 # ============================================================
-# NORMALIZE PAYLOAD
+# NORMALIZE VALUES
 # ============================================================
 
 def normalize_payload(records):
@@ -276,7 +304,9 @@ def normalize_payload(records):
                 np.int32,
             )
         ):
+
             return int(value)
+
 
         if isinstance(
             value,
@@ -286,18 +316,25 @@ def normalize_payload(records):
                 np.float32,
             )
         ):
+
             return float(value)
+
 
         if isinstance(
             value,
             np.bool_
         ):
+
             return bool(value)
 
+
         if pd.isna(value):
+
             return None
 
+
         return value
+
 
     return [
         {
@@ -309,7 +346,7 @@ def normalize_payload(records):
 
 
 # ============================================================
-# LOCAL MODEL INFERENCE
+# LOCAL XGBOOST INFERENCE
 # ============================================================
 
 def predict_records(records):
@@ -319,7 +356,9 @@ def predict_records(records):
     )
 
     if len(payload) == 0:
-        return [], None, False
+
+        return [], None
+
 
     try:
 
@@ -327,10 +366,16 @@ def predict_records(records):
             predict as local_predict
         )
 
+
         preds_df = local_predict(
             pd.DataFrame(payload),
             model_path=MODEL_PATH
         )
+
+
+        # ----------------------------------------------------
+        # Predictions
+        # ----------------------------------------------------
 
         preds = (
             preds_df[
@@ -339,6 +384,11 @@ def predict_records(records):
             .astype(float)
             .tolist()
         )
+
+
+        # ----------------------------------------------------
+        # Actual values
+        # ----------------------------------------------------
 
         actuals = None
 
@@ -352,11 +402,12 @@ def predict_records(records):
                 .tolist()
             )
 
+
         return (
             preds,
-            actuals,
-            True
+            actuals
         )
+
 
     except Exception as exc:
 
@@ -388,6 +439,7 @@ st.title(
 # ============================================================
 
 if disp_df.empty:
+
     st.stop()
 
 
@@ -403,9 +455,11 @@ years = sorted(
     .unique()
 )
 
+
 months = list(
     range(1, 13)
 )
+
 
 regions = [
     "All"
@@ -453,18 +507,23 @@ with col3:
 
 
 # ============================================================
-# SHOW PREDICTIONS
+# PREDICTION BUTTON
 # ============================================================
 
 if st.button(
     "Show Predictions 🚀"
 ):
 
+    # --------------------------------------------------------
+    # FILTER DATA
+    # --------------------------------------------------------
+
     mask = (
         (disp_df["year"] == year)
         &
         (disp_df["month"] == month)
     )
+
 
     if region != "All":
 
@@ -473,9 +532,11 @@ if st.button(
             == region
         )
 
+
     idx = disp_df.index[
         mask
     ]
+
 
     # --------------------------------------------------------
     # NO DATA
@@ -487,6 +548,7 @@ if st.button(
             "No data found for these filters."
         )
 
+
     else:
 
         st.write(
@@ -495,36 +557,45 @@ if st.button(
             f"Region: {region}"
         )
 
-        # ----------------------------------------------------
-        # PREPARE FEATURES
-        # ----------------------------------------------------
+
+        # ====================================================
+        # PREPARE SELECTED FEATURES
+        # ====================================================
 
         selected = fe_df.loc[
             idx
         ].copy()
 
+
+        # Remove target
         selected.drop(
             columns=["price"],
             errors="ignore",
             inplace=True
         )
 
+
+        # Replace infinity
         selected.replace(
             [np.inf, -np.inf],
             np.nan,
             inplace=True
         )
 
+
+        # Fill missing values
         selected.fillna(
             0,
             inplace=True
         )
+
 
         payload = normalize_payload(
             selected.to_dict(
                 orient="records"
             )
         )
+
 
         if len(payload) == 0:
 
@@ -533,27 +604,25 @@ if st.button(
                 "cannot make prediction."
             )
 
+
         else:
 
-            # ------------------------------------------------
-            # RUN PREDICTION
-            # ------------------------------------------------
+            # =================================================
+            # RUN MODEL
+            # =================================================
 
-            (
-                preds,
-                actuals,
-                used_fallback
-            ) = predict_records(
+            preds, actuals = predict_records(
                 selected.to_dict(
                     orient="records"
                 )
             )
 
+
             if preds:
 
-                # --------------------------------------------
+                # =============================================
                 # PREDICTION RESULTS
-                # --------------------------------------------
+                # =============================================
 
                 view = disp_df.loc[
                     idx,
@@ -564,9 +633,11 @@ if st.button(
                     ]
                 ].copy()
 
+
                 view = view.sort_values(
                     "date"
                 )
+
 
                 view[
                     "prediction"
@@ -577,6 +648,7 @@ if st.button(
                     )
                     .astype(float)
                 )
+
 
                 if (
                     actuals is not None
@@ -595,14 +667,15 @@ if st.button(
                     )
 
 
-                # --------------------------------------------
+                # =============================================
                 # METRICS
-                # --------------------------------------------
+                # =============================================
 
                 mae = (
                     view["prediction"]
                     - view["actual_price"]
                 ).abs().mean()
+
 
                 rmse = (
                     (
@@ -611,6 +684,17 @@ if st.button(
                     ) ** 2
                 ).mean() ** 0.5
 
+
+                # Avoid division problems
+                valid_actuals = (
+                    view["actual_price"]
+                    .replace(
+                        0,
+                        np.nan
+                    )
+                )
+
+
                 avg_pct_error = (
                     (
                         (
@@ -618,33 +702,21 @@ if st.button(
                             - view["actual_price"]
                         ).abs()
                         /
-                        view["actual_price"]
+                        valid_actuals
                     )
                     .mean()
                     * 100
                 )
 
 
-                # --------------------------------------------
-                # FALLBACK MESSAGE
-                # --------------------------------------------
-
-                if used_fallback:
-
-                    st.info(
-                        "Showing locally computed "
-                        "predictions because the API "
-                        "service was unavailable."
-                    )
-
-
-                # --------------------------------------------
-                # TABLE
-                # --------------------------------------------
+                # =============================================
+                # RESULTS TABLE
+                # =============================================
 
                 st.subheader(
                     "Predictions vs Actuals"
                 )
+
 
                 st.dataframe(
                     view.reset_index(
@@ -654,9 +726,9 @@ if st.button(
                 )
 
 
-                # --------------------------------------------
+                # =============================================
                 # METRIC CARDS
-                # --------------------------------------------
+                # =============================================
 
                 c1, c2, c3 = st.columns(3)
 
@@ -685,46 +757,59 @@ if st.button(
                     )
 
 
-                # --------------------------------------------
+                # =============================================
                 # YEARLY TREND
-                # --------------------------------------------
+                # =============================================
 
                 yearly_idx = (
-                    disp_df["year"]
+                    disp_df[
+                        "year"
+                    ]
                     == year
                 )
+
 
                 if region != "All":
 
                     yearly_idx &= (
-                        disp_df["region"]
+                        disp_df[
+                            "region"
+                        ]
                         == region
                     )
+
 
                 yearly_data = disp_df.loc[
                     yearly_idx
                 ].copy()
 
+
                 payload_yearly = fe_df.loc[
                     yearly_data.index
                 ].copy()
 
+
+                # Remove target
                 payload_yearly.drop(
                     columns=["price"],
                     errors="ignore",
                     inplace=True
                 )
 
+
+                # Clean features
                 payload_yearly.replace(
                     [np.inf, -np.inf],
                     np.nan,
                     inplace=True
                 )
 
+
                 payload_yearly.fillna(
                     0,
                     inplace=True
                 )
+
 
                 payload_yearly = normalize_payload(
                     payload_yearly.to_dict(
@@ -732,11 +817,12 @@ if st.button(
                     )
                 )
 
-                (
-                    preds_yearly,
-                    _,
-                    used_yearly_fallback
-                ) = predict_records(
+
+                # =============================================
+                # YEARLY PREDICTIONS
+                # =============================================
+
+                preds_yearly, _ = predict_records(
                     payload_yearly
                 )
 
@@ -753,10 +839,16 @@ if st.button(
                         .astype(float)
                     )
 
+
+                    # -----------------------------------------
+                    # MONTHLY AVERAGES
+                    # -----------------------------------------
+
                     monthly_avg = (
                         yearly_data
-                        .groupby("month")
-                        [
+                        .groupby(
+                            "month"
+                        )[
                             [
                                 "actual_price",
                                 "prediction"
@@ -767,9 +859,9 @@ if st.button(
                     )
 
 
-                    # ----------------------------------------
+                    # -----------------------------------------
                     # YEARLY TREND CHART
-                    # ----------------------------------------
+                    # -----------------------------------------
 
                     fig = px.line(
                         monthly_avg,
@@ -789,6 +881,8 @@ if st.button(
                         ),
                     )
 
+
+                    # Highlight selected month
                     fig.add_vrect(
                         x0=month - 0.5,
                         x1=month + 0.5,
@@ -799,24 +893,18 @@ if st.button(
                     )
 
 
-                    if used_yearly_fallback:
-
-                        st.info(
-                            "Yearly trend used "
-                            "local inference fallback."
-                        )
-
-
                     st.plotly_chart(
                         fig,
                         use_container_width=True
                     )
+
 
                 else:
 
                     st.info(
                         "No yearly trend plot available."
                     )
+
 
             else:
 
