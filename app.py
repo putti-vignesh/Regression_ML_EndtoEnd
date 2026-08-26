@@ -5,9 +5,7 @@ import boto3
 import numpy as np
 import pandas as pd
 import plotly.express as px
-import requests
 import streamlit as st
-from joblib import load
 
 
 # ============================================================
@@ -24,31 +22,29 @@ S3_BUCKET = os.environ.get(
     "housing-regression-data9"
 )
 
+
 # ============================================================
 # AWS CONFIGURATION
 # ============================================================
 
-# Read AWS credentials from Streamlit Secrets
-AWS_ACCESS_KEY_ID = st.secrets.get("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = st.secrets.get("AWS_SECRET_ACCESS_KEY")
+AWS_ACCESS_KEY_ID = st.secrets.get(
+    "AWS_ACCESS_KEY_ID"
+)
+
+AWS_SECRET_ACCESS_KEY = st.secrets.get(
+    "AWS_SECRET_ACCESS_KEY"
+)
+
 AWS_REGION = st.secrets.get(
     "AWS_DEFAULT_REGION",
     "ap-south-2"
 )
 
-# Temporary diagnostic information.
-# This NEVER displays the actual credentials.
-st.write(
-    "AWS credentials loaded:",
-    bool(AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY)
-)
 
-st.write(
-    "AWS region:",
-    AWS_REGION
-)
+# ============================================================
+# VALIDATE AWS CREDENTIALS
+# ============================================================
 
-# Stop immediately if Streamlit Secrets are missing
 if not AWS_ACCESS_KEY_ID or not AWS_SECRET_ACCESS_KEY:
     st.error(
         "AWS credentials are missing from Streamlit Secrets. "
@@ -88,6 +84,7 @@ TARGET_ENCODER_PATH = (
 # ============================================================
 
 try:
+
     s3 = boto3.client(
         "s3",
         aws_access_key_id=AWS_ACCESS_KEY_ID,
@@ -96,7 +93,11 @@ try:
     )
 
 except Exception as exc:
-    st.error(f"Unable to initialize AWS S3 client: {exc}")
+
+    st.error(
+        f"Unable to initialize AWS S3 client: {exc}"
+    )
+
     st.stop()
 
 
@@ -105,6 +106,7 @@ except Exception as exc:
 # ============================================================
 
 def resolve_local_path(local_path: str) -> Path:
+
     base_path = Path(local_path)
 
     candidates = [
@@ -114,6 +116,7 @@ def resolve_local_path(local_path: str) -> Path:
     ]
 
     for candidate in candidates:
+
         if candidate.exists():
             return candidate
 
@@ -124,10 +127,16 @@ def resolve_local_path(local_path: str) -> Path:
 # DOWNLOAD FILE FROM S3
 # ============================================================
 
-def load_from_s3(key: str, local_path: str) -> str:
-    local_path = resolve_local_path(local_path)
+def load_from_s3(
+    key: str,
+    local_path: str
+) -> str:
 
-    # If file already exists locally, use it
+    local_path = resolve_local_path(
+        local_path
+    )
+
+    # Use existing local file if available
     if local_path.exists():
         return str(local_path)
 
@@ -137,6 +146,7 @@ def load_from_s3(key: str, local_path: str) -> str:
     )
 
     try:
+
         st.info(
             f"Downloading {key} from S3..."
         )
@@ -152,9 +162,11 @@ def load_from_s3(key: str, local_path: str) -> str:
         )
 
     except Exception as exc:
+
         st.error(
-            f"Could not download {key} from S3: {exc}"
+            f"Could not download {key} from S3 ({exc})."
         )
+
         raise
 
     return str(local_path)
@@ -191,7 +203,7 @@ def load_data():
             "city_full"
         ]]
 
-        # Make sure both datasets have matching lengths
+        # Align datasets if their lengths differ
         if len(fe) != len(meta):
 
             min_len = min(
@@ -214,7 +226,9 @@ def load_data():
 
         disp["date"] = meta["date"]
 
-        disp["region"] = meta["city_full"]
+        disp["region"] = meta[
+            "city_full"
+        ]
 
         disp["year"] = (
             disp["date"]
@@ -228,7 +242,9 @@ def load_data():
             .month
         )
 
-        disp["actual_price"] = fe["price"]
+        disp["actual_price"] = fe[
+            "price"
+        ]
 
         return fe, disp
 
@@ -245,7 +261,7 @@ def load_data():
 
 
 # ============================================================
-# NORMALIZE VALUES FOR PREDICTION
+# NORMALIZE PAYLOAD
 # ============================================================
 
 def normalize_payload(records):
@@ -285,15 +301,15 @@ def normalize_payload(records):
 
     return [
         {
-            key: normalize_value(val)
-            for key, val in record.items()
+            key: normalize_value(value)
+            for key, value in record.items()
         }
         for record in records
     ]
 
 
 # ============================================================
-# PREDICTION
+# LOCAL MODEL INFERENCE
 # ============================================================
 
 def predict_records(records):
@@ -317,7 +333,9 @@ def predict_records(records):
         )
 
         preds = (
-            preds_df["predicted_price"]
+            preds_df[
+                "predicted_price"
+            ]
             .astype(float)
             .tolist()
         )
@@ -327,7 +345,9 @@ def predict_records(records):
         if "actual_price" in preds_df.columns:
 
             actuals = (
-                preds_df["actual_price"]
+                preds_df[
+                    "actual_price"
+                ]
                 .astype(float)
                 .tolist()
             )
@@ -355,7 +375,7 @@ fe_df, disp_df = load_data()
 
 
 # ============================================================
-# STREAMLIT UI
+# PAGE TITLE
 # ============================================================
 
 st.title(
@@ -363,7 +383,10 @@ st.title(
 )
 
 
-# Stop if data could not be loaded
+# ============================================================
+# STOP IF DATA IS UNAVAILABLE
+# ============================================================
+
 if disp_df.empty:
     st.stop()
 
@@ -373,7 +396,9 @@ if disp_df.empty:
 # ============================================================
 
 years = sorted(
-    disp_df["year"]
+    disp_df[
+        "year"
+    ]
     .dropna()
     .unique()
 )
@@ -385,7 +410,9 @@ months = list(
 regions = [
     "All"
 ] + sorted(
-    disp_df["region"]
+    disp_df[
+        "region"
+    ]
     .dropna()
     .unique()
 )
@@ -426,14 +453,13 @@ with col3:
 
 
 # ============================================================
-# PREDICTION BUTTON
+# SHOW PREDICTIONS
 # ============================================================
 
 if st.button(
     "Show Predictions 🚀"
 ):
 
-    # Filter selected period
     mask = (
         (disp_df["year"] == year)
         &
@@ -451,7 +477,10 @@ if st.button(
         mask
     ]
 
-    # No data
+    # --------------------------------------------------------
+    # NO DATA
+    # --------------------------------------------------------
+
     if idx.empty:
 
         st.warning(
@@ -466,9 +495,9 @@ if st.button(
             f"Region: {region}"
         )
 
-        # ====================================================
-        # PREPARE SELECTED DATA
-        # ====================================================
+        # ----------------------------------------------------
+        # PREPARE FEATURES
+        # ----------------------------------------------------
 
         selected = fe_df.loc[
             idx
@@ -506,23 +535,25 @@ if st.button(
 
         else:
 
-            # =================================================
-            # RUN PREDICTIONS
-            # =================================================
+            # ------------------------------------------------
+            # RUN PREDICTION
+            # ------------------------------------------------
 
-            preds, actuals, used_fallback = (
-                predict_records(
-                    selected.to_dict(
-                        orient="records"
-                    )
+            (
+                preds,
+                actuals,
+                used_fallback
+            ) = predict_records(
+                selected.to_dict(
+                    orient="records"
                 )
             )
 
             if preds:
 
-                # =============================================
-                # PREDICTION TABLE
-                # =============================================
+                # --------------------------------------------
+                # PREDICTION RESULTS
+                # --------------------------------------------
 
                 view = disp_df.loc[
                     idx,
@@ -537,7 +568,9 @@ if st.button(
                     "date"
                 )
 
-                view["prediction"] = (
+                view[
+                    "prediction"
+                ] = (
                     pd.Series(
                         preds,
                         index=view.index
@@ -551,7 +584,9 @@ if st.button(
                     == len(view)
                 ):
 
-                    view["actual_price"] = (
+                    view[
+                        "actual_price"
+                    ] = (
                         pd.Series(
                             actuals,
                             index=view.index
@@ -560,9 +595,9 @@ if st.button(
                     )
 
 
-                # =============================================
+                # --------------------------------------------
                 # METRICS
-                # =============================================
+                # --------------------------------------------
 
                 mae = (
                     view["prediction"]
@@ -590,6 +625,10 @@ if st.button(
                 )
 
 
+                # --------------------------------------------
+                # FALLBACK MESSAGE
+                # --------------------------------------------
+
                 if used_fallback:
 
                     st.info(
@@ -599,9 +638,9 @@ if st.button(
                     )
 
 
-                # =============================================
-                # PREDICTIONS VS ACTUALS
-                # =============================================
+                # --------------------------------------------
+                # TABLE
+                # --------------------------------------------
 
                 st.subheader(
                     "Predictions vs Actuals"
@@ -615,11 +654,12 @@ if st.button(
                 )
 
 
-                # =============================================
+                # --------------------------------------------
                 # METRIC CARDS
-                # =============================================
+                # --------------------------------------------
 
                 c1, c2, c3 = st.columns(3)
+
 
                 with c1:
 
@@ -628,12 +668,14 @@ if st.button(
                         f"{mae:,.0f}"
                     )
 
+
                 with c2:
 
                     st.metric(
                         "RMSE",
                         f"{rmse:,.0f}"
                     )
+
 
                 with c3:
 
@@ -643,9 +685,9 @@ if st.button(
                     )
 
 
-                # =============================================
+                # --------------------------------------------
                 # YEARLY TREND
-                # =============================================
+                # --------------------------------------------
 
                 yearly_idx = (
                     disp_df["year"]
@@ -684,24 +726,26 @@ if st.button(
                     inplace=True
                 )
 
-                payload_yearly = (
-                    normalize_payload(
-                        payload_yearly.to_dict(
-                            orient="records"
-                        )
+                payload_yearly = normalize_payload(
+                    payload_yearly.to_dict(
+                        orient="records"
                     )
                 )
 
-                preds_yearly, _, used_yearly_fallback = (
-                    predict_records(
-                        payload_yearly
-                    )
+                (
+                    preds_yearly,
+                    _,
+                    used_yearly_fallback
+                ) = predict_records(
+                    payload_yearly
                 )
 
 
                 if preds_yearly:
 
-                    yearly_data["prediction"] = (
+                    yearly_data[
+                        "prediction"
+                    ] = (
                         pd.Series(
                             preds_yearly,
                             index=yearly_data.index
@@ -723,9 +767,9 @@ if st.button(
                     )
 
 
-                    # =========================================
-                    # PLOT
-                    # =========================================
+                    # ----------------------------------------
+                    # YEARLY TREND CHART
+                    # ----------------------------------------
 
                     fig = px.line(
                         monthly_avg,
@@ -774,13 +818,16 @@ if st.button(
                         "No yearly trend plot available."
                     )
 
-
             else:
 
                 st.error(
                     "No predictions were returned."
                 )
 
+
+# ============================================================
+# DEFAULT MESSAGE
+# ============================================================
 
 else:
 
