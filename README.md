@@ -8,7 +8,9 @@
 <p align="center">
   <strong>Production-oriented machine learning pipeline for housing price prediction using XGBoost</strong>
 </p>
+## 🚀 Live Demo
 
+🔗 **[Open Housing Price Prediction Dashboard](https://housing-ml-endto-end.streamlit.app/)**
 <p align="center">
   <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=for-the-badge&logo=python&logoColor=white" />
   <img src="https://img.shields.io/badge/XGBoost-3.0.4-FF6600?style=for-the-badge" />
