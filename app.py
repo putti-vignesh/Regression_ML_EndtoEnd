@@ -10,15 +10,46 @@ import streamlit as st
 from joblib import load
 
 
-API_URL = os.environ.get("API_URL", "http://127.0.0.1:8000/predict")
-S3_BUCKET = os.environ.get("S3_BUCKET", "housing-regression-data9")
-AWS_REGION = os.environ.get("AWS_REGION", "ap-south-2")
+API_URL = os.environ.get(
+    "API_URL",
+    "http://127.0.0.1:8000/predict"
+)
+
+S3_BUCKET = os.environ.get(
+    "S3_BUCKET",
+    "housing-regression-data9"
+)
+
+AWS_REGION = os.environ.get(
+    "AWS_REGION",
+    st.secrets.get("AWS_DEFAULT_REGION", "ap-south-2")
+)
+
 PROJECT_ROOT = Path(__file__).resolve().parent
+
 MODEL_PATH = PROJECT_ROOT / "models" / "xgb_best_model.pkl"
+
 FREQ_ENCODER_PATH = PROJECT_ROOT / "models" / "freq_encoder.pkl"
+
 TARGET_ENCODER_PATH = PROJECT_ROOT / "models" / "target_encoder.pkl"
 
-s3 = boto3.client("s3", region_name=AWS_REGION)
+
+# AWS S3 client
+aws_access_key_id = st.secrets.get("AWS_ACCESS_KEY_ID")
+aws_secret_access_key = st.secrets.get("AWS_SECRET_ACCESS_KEY")
+
+if aws_access_key_id and aws_secret_access_key:
+    s3 = boto3.client(
+        "s3",
+        aws_access_key_id=aws_access_key_id,
+        aws_secret_access_key=aws_secret_access_key,
+        region_name=AWS_REGION,
+    )
+else:
+    s3 = boto3.client(
+        "s3",
+        region_name=AWS_REGION
+    )
 
 
 def resolve_local_path(local_path: str) -> Path:
